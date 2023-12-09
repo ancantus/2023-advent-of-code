@@ -61,8 +61,14 @@ let game_filter query records =
                         | Blue n -> if (get_int b_max) > n then false else acc)
                 true query
 
-let run () = 
+let run1 () = 
         let game_query = parse_query (Option.value (In_channel.input_line stdin) ~default:"") in
         let game_summaries = parse_game_summaries (In_channel.input_lines stdin) in
         let filtered_games = List.filter (fun summary -> game_filter game_query summary.records) game_summaries in
         Printf.printf "Accumulated Game Ids: %i\n" (List.fold_left (fun acc i -> acc + i.index) 0 filtered_games) 
+
+let run2 () =
+        let game_summaries = parse_game_summaries (In_channel.input_lines stdin) in
+        let min_possible_cubes = List.map (fun s -> get_max_cubes s.records) game_summaries in
+        let game_powers = List.map (fun (r, g, b) -> (get_int r)*(get_int g)*(get_int b)) min_possible_cubes in
+        Printf.printf "Sum Powers %d\n" (List.fold_left ( + ) 0 game_powers)
