@@ -76,5 +76,5 @@ let remap_cal_line str =
 (* Parsing logic for multi-line *)
 let accum_calc_values acc str =
         acc + (calc_cal_value (find_cal_values (remap_cal_line str)))
-let () = Printf.printf "Calibration Value: %i\n" (In_channel.fold_lines accum_calc_values 0 stdin)
+let run () = Printf.printf "Calibration Value: %i\n" (In_channel.fold_lines accum_calc_values 0 stdin)
 
