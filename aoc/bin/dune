@@ -1,4 +1,4 @@
 (executable
  (public_name aoc)
  (name main)
- (libraries aoc01 aoc02))
+ (libraries aoc01 aoc02 aoc03))
