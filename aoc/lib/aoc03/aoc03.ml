@@ -110,11 +110,22 @@ let acc_part_num acc pn =
         let symbol_adjacent = List.exists (fun i -> is_symbol i.snipit) pn.neighbours in
         if not (is_symbol pn.snipit) && symbol_adjacent then acc + (int_of_string pn.snipit) else acc
 
+let acc_gears acc pn =
+        let is_gear = pn.snipit = "*" in
+        let values = List.fold_left 
+                (fun a i -> match int_of_string_opt i.snipit with Some x -> x :: a | None -> a) 
+                [] pn.neighbours in
+        if is_gear && (List.length values) = 2
+                then acc + (List.fold_left ( * ) 1 values)
+                else acc
+
 let run () =
         let schematic = load_schematic stdin in
         Printf.printf "Schematic Loaded: [%i, %i]\n" 
                 (Bigarray.Array2.dim1 schematic) (Bigarray.Array2.dim2 schematic);
         let pn_graph = find_pn_graph schematic in
         let pn_sum = List.fold_left acc_part_num 0 pn_graph in
-        Printf.printf "Part Number Sum: %i\n" pn_sum
+        Printf.printf "Part Number Sum: %i\n" pn_sum;
+        let gear_sum = List.fold_left acc_gears 0 pn_graph in
+        Printf.printf "Gear Sum: %i\n" gear_sum
 
