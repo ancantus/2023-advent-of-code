@@ -7,5 +7,6 @@ let () = match Sys.argv.(1) with
         | "aoc04" -> Aoc04.run ()
         | "aoc05.1" -> Aoc05.run1 ()
         | "aoc05.2" -> Aoc05.run2 ()
+        | "aoc06" -> Aoc06.run ()
         | _ -> print_endline "Unhandled AOC"
 
