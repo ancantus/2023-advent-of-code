@@ -18,6 +18,16 @@ let read_seeds channel =
         Scanf.bscanf channel "seeds: " (fun () -> ()) ();
         read_num_list channel []
 
+let read_seed_ranges channel =
+        let seeds = read_seeds channel in
+        let rec inner seeds ranges =
+                match seeds with
+                        | [] -> ranges
+                        | s :: [] -> (s, 1) :: ranges
+                        | l :: s :: tail -> inner tail ((s, l) :: ranges)
+        in
+        List.sort (fun a b -> compare (fst a) (fst b)) (inner seeds [])
+
 let read_maps channel =
         let read_range channel =
                 Scanf.bscanf_opt channel " %d %d %d " 
@@ -71,7 +81,18 @@ let rec query_maps map key =
                 | Some m -> let (m, key) = map_lookup m key in
                         query_maps m key
 
-let run () =
+let make_seed_seq seed_ranges =
+        let make_seq range =
+                Seq.init (snd range) (fun i -> (fst range) + i)
+        in
+        let rec inner ranges sequence =
+                match ranges with
+                        | r :: tail -> inner tail (Seq.append sequence (make_seq r))
+                        | _ -> sequence
+        in
+        inner seed_ranges Seq.empty
+
+let run1 () =
         let seeds = read_seeds Scanf.Scanning.stdin in
         let maps = List.rev (read_maps Scanf.Scanning.stdin) in
         Printf.printf "Location maps:\n";
@@ -79,5 +100,24 @@ let run () =
                 (match m.output with None -> "location" | Some m -> m.name) ) maps;
         let min_location = List.fold_left 
                 (fun acc s -> min acc (query_maps (Some (List.hd maps)) s)) max_int seeds in
+        Printf.printf "Closest Location: %d\n" min_location
+
+module T = Domainslib.Task
+let parallel_min_loc pool maps seed_ranges =
+        let min_locations = List.map (fun r -> T.async pool (fun _ -> 
+                let seq = make_seed_seq [r] in
+                Seq.fold_left 
+                        (fun acc s -> min acc (query_maps (Some (List.hd maps)) s)) max_int seq)) seed_ranges in
+        List.fold_left (fun acc l -> min acc (T.await pool l)) max_int min_locations
+
+let run2 () = 
+        let seed_ranges = read_seed_ranges Scanf.Scanning.stdin in
+        let maps = List.rev (read_maps Scanf.Scanning.stdin) in
+        Printf.printf "Location maps:\n";
+        List.iter (fun m -> Printf.printf "\t%s -> %s\n" m.name 
+                (match m.output with None -> "location" | Some m -> m.name) ) maps;
+        let pool = T.setup_pool ~num_domains:15 () in
+        let min_location = T.run pool (fun _ -> parallel_min_loc pool maps seed_ranges) in
+        T.teardown_pool pool;
         Printf.printf "Closest Location: %d\n" min_location
 
