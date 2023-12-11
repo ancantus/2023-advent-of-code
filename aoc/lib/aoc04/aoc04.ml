@@ -41,7 +41,8 @@ let count_matches card =
         in
         inner card.winning card.possible 0
 
-let calc_score cnt =
+let calc_score card =
+        let cnt = count_matches card in
         let rec inner cnt score =
                 match cnt with
                         | -1 -> 0
@@ -49,6 +50,21 @@ let calc_score cnt =
                         | n -> inner (n - 1) (score * 2) 
         in
         inner (cnt - 1) 1
+
+let acc_cards acc card = 
+        let rec create_stack depth value stack =
+                if depth <= 0 then stack
+                else create_stack (depth -1) value ([value] @ stack)
+        in
+        let add_copies score copies stack =
+                let extra_copies = create_stack (score - (List.length stack)) copies [] in
+                (List.mapi (fun i a -> if i < score then a + copies else a) stack) @ extra_copies
+        in
+        let (card_cnt, copy_stack) = acc in
+        let score = count_matches card in
+        match copy_stack with 
+                | [] -> (card_cnt + 1, create_stack score 1 [])
+                | copies :: tail -> (card_cnt + copies + 1, add_copies score (copies + 1) tail)
                                 
 let print_card card =
         let print_int_list l = List.iter (Printf.printf " %02d ") l in
@@ -59,9 +75,10 @@ let print_card card =
         Printf.printf "\n"
 
 let run () =
-        let cards = read_cards Scanf.Scanning.stdin [] in
+        let cards = List.rev (read_cards Scanf.Scanning.stdin []) in
         List.iter print_card cards;
-        let sum_score = List.fold_left (fun acc c -> acc + (calc_score (count_matches c))) 0 cards in
-        Printf.printf "Total Score: %d\n" sum_score
-
+        let sum_score = List.fold_left (fun acc c -> acc + (calc_score c)) 0 cards in
+        Printf.printf "Total Score: %d\n" sum_score;
+        let (card_count, _) = List.fold_left acc_cards (0, []) cards in
+        Printf.printf "Total Cards %d\n" card_count
 
