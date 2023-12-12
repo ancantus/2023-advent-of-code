@@ -27,8 +27,10 @@ let get_hand_string h =
                 | OnePair s -> s
                 | High s -> s
 
+(* Map the non-numeric cards around the 2..9 ascii char space *)
 let card_to_int c =
         match c with
+                | 'X' -> 47
                 | '2'..'9' -> int_of_char c
                 | 'T' -> 58
                 | 'J' -> 59
@@ -62,11 +64,22 @@ let compare_hand lhs rhs =
                 else hand_str_compare (get_hand_string lhs) (get_hand_string rhs) 0
 
 let make_hand str =
-        let hand_arr = Array.init (String.length str) (fun i -> str.[i]) in
+        let stripped_hand = String.fold_left 
+                (fun acc c -> if c = 'X' then acc else acc ^ (Char.escaped c)) "" str in 
+        let num_jokers = (String.length str) -(String.length stripped_hand) in
+        let hand_arr = Array.init (String.length stripped_hand) (fun i -> stripped_hand.[i]) in
         Array.fast_sort Char.compare hand_arr;
         let deduce_hand repeats unpaired =
                 match repeats with
-                        | 0 -> High str
+                        (* Joker deletion doesn't work if there are no pairs to glob onto *)
+                        | 0 -> (match num_jokers with
+                                        | 0 -> High str
+                                        | 1 -> OnePair str
+                                        | 2 -> ThreeKind str
+                                        | 3 -> FourKind str
+                                        | 4 -> FiveKind str
+                                        | 5 -> FiveKind str
+                                        | _ -> failwith ("Unhandled Hand " ^ str))
                         | 1 -> (match unpaired with
                                         | 0 -> FiveKind str
                                         | 1 -> FourKind str
@@ -89,17 +102,26 @@ let make_hand str =
         in
         find_hand_type 1 false 0 0
 
-let read_game_state channel =
+let read_game_state channel string_tf=
         let rec read_inner channel l =
-                match Scanf.bscanf_opt channel " %s %d " (fun s d -> (make_hand s, d)) with
+                match Scanf.bscanf_opt channel " %s %d " (fun s d -> (make_hand (string_tf s), d)) with
                         | None -> l
                         | Some r -> read_inner channel (r :: l)
         in
         read_inner channel []
 
-let run () =
+let run1 () =
         let game_state = List.stable_sort (fun (lhs, _) (rhs, _) -> compare_hand lhs rhs) 
-                (read_game_state Scanf.Scanning.stdin) in
+                (read_game_state Scanf.Scanning.stdin (fun s -> s)) in
+        List.iter (fun x -> print_endline (hand_to_string (fst x))) game_state;
+        let winnings = List.fold_left ( + ) 0
+                (List.mapi (fun i (_, bid) -> (i + 1) * bid) game_state) in
+        Printf.printf "Total winnings: %d\n" winnings
+
+let run2 () =
+        let joker_tf = (fun s -> String.init (String.length s) (fun i -> if s.[i] = 'J' then 'X' else s.[i])) in
+        let game_state = List.stable_sort (fun (lhs, _) (rhs, _) -> compare_hand lhs rhs) 
+                (read_game_state Scanf.Scanning.stdin joker_tf) in
         List.iter (fun x -> print_endline (hand_to_string (fst x))) game_state;
         let winnings = List.fold_left ( + ) 0
                 (List.mapi (fun i (_, bid) -> (i + 1) * bid) game_state) in
