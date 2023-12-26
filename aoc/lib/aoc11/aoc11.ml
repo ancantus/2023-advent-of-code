@@ -79,7 +79,7 @@ let rec make_pairs elements =
                 | _ :: [] -> []
                 | front :: tail -> (List.map (fun i -> (front, i)) tail) @ (make_pairs tail)
 
-let get_distance img start dest =
+let get_distance f_dist img start dest =
         let get_next_step coords =
                 let magnitude i = if i = 0 then 0 else i / (abs i) in
                 let step_x = magnitude ((fst dest) - (fst coords)) in
@@ -90,17 +90,24 @@ let get_distance img start dest =
         let rec inner coords dist =
                 if coords = dest then dist
                 else (
-                        let dist = if img.{fst coords, snd coords} = 'X' then dist + 2 else dist + 1 in
+                        let dist = dist + (f_dist img.{fst coords, snd coords}) in
                         inner (get_next_step coords) dist               
                 )
         in
         inner start 0
+
+let get_young_distance = get_distance (fun c -> if c = 'X' then 2 else 1)
+let get_old_distance = get_distance (fun x -> if x = 'X' then 1000000 else 1)
 
 let run () =
         let img = load_img stdin in
         process_expansion img;
         print_img img;
         let galaxy_pairs = make_pairs (find_galaxies img) in
-        let min_distance = List.fold_left (fun acc (g1, g2) -> acc + (get_distance img g1 g2)) 0 galaxy_pairs in
-        Printf.printf "Minimum distance: %d\n" min_distance
+        let young_distances = List.map 
+                (fun (g1, g2) -> get_young_distance img g1 g2) galaxy_pairs in
+        Printf.printf "Young distance: %d\n" (List.fold_left ( + ) 0 young_distances);
+        let old_distances = List.map 
+                (fun (g1, g2) -> get_old_distance img g1 g2) galaxy_pairs in
+        Printf.printf "Old distance: %d\n" (List.fold_left ( + ) 0 old_distances) 
 
